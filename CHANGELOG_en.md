@@ -1,5 +1,23 @@
 > The following is a machine translation. Welcome to correct grammatical errors.
 
+# V1.3.0 RC1
+
+2026-08-14
+
+## Added and changed
+
+1. Added native Minecraft 1.20.1 Fabric, 1.20.1 Forge, 1.21.1 NeoForge, and 26.1.2 NeoForge builds.
+2. Removed the Architectury runtime dependency and server mixins from production JARs.
+3. Reworked UI translation as client-safe display copies without changing signed chat or source Components.
+4. Added bounded batching, in-flight deduplication, retry limits, placeholder protection, atomic cache storage, and JDK ZIP resource packs.
+5. Restored the config UI, native client commands, translation icon, key binding, and optional safe Patchouli title bridge.
+
+## Security fixes
+
+1. Removed trust-all TLS and `NoopHostnameVerifier`; JVM CA and hostname verification are now mandatory.
+2. Custom IP addresses only override DNS routing while Host, SNI, and certificate verification continue to use the configured domain.
+3. Fixed unbounded retries, executor/connection leaks, background UI mutation, and persisted `_at_store` loading.
+
 # V1.2.1
 
 2023-12-30

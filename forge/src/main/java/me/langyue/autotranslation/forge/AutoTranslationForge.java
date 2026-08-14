@@ -1,39 +1,22 @@
 package me.langyue.autotranslation.forge;
 
-import dev.architectury.platform.forge.EventBuses;
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.ScreenTranslationHelper;
-import me.langyue.autotranslation.config.Config;
-import me.shedaniel.autoconfig.AutoConfig;
-import net.minecraftforge.client.ConfigScreenHandler;
+import me.langyue.autotranslation.command.AutoTranslationCommands;
 import net.minecraftforge.client.gui.ModListScreen;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 @Mod(AutoTranslation.MOD_ID)
 public class AutoTranslationForge {
     public AutoTranslationForge() {
-        // Submit our event bus to let architectury register our content on the right time
-        EventBuses.registerModEventBus(AutoTranslation.MOD_ID, FMLJavaModLoadingContext.get().getModEventBus());
+        AutoTranslation.bootstrap(FMLPaths.GAMEDIR.get());
         AutoTranslation.init();
         ScreenTranslationHelper.addScreenBlacklist(ModListScreen.class);
-        ModLoadingContext.get().registerExtensionPoint(
-                ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory(
-                        (mc, screen) -> AutoConfig.getConfigScreen(Config.class, screen).get()
-                )
-        );
-        MinecraftForge.EVENT_BUS.register(ServerStoppingEventHandler.class);
-    }
-
-    public static class ServerStoppingEventHandler {
-        @SubscribeEvent
-        public static void serverStopping(ServerStoppingEvent event) {
-            AutoTranslation.stop();
-        }
+        var modBus = net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
+        modBus.addListener((RegisterKeyMappingsEvent event) -> event.register(AutoTranslation.SCREEN_TRANSLATE_KEYMAPPING));
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) -> AutoTranslationCommands.register(event.getDispatcher()));
     }
 }

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "autotranslation",
+  "version": "${version}",
+  "name": "AutoTranslation",
+  "authors": ["墨涤千尘"],
+  "license": "AGPL-3.0-only",
+  "contact": {
+    "homepage": "https://github.com/Moirstral/AutoTranslation",
+    "sources": "https://github.com/Moirstral/AutoTranslation",
+    "issues": "https://github.com/Moirstral/AutoTranslation/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": ["me.langyue.autotranslation.fabric1201.AutoTranslationFabric1201"],
+    "modmenu": ["me.langyue.autotranslation.fabric1201.ModMenuIntegration"]
+  },
+  "mixins": ["autotranslation.fabric.mixins.json", "autotranslation.fabric.patchouli.mixins.json"],
+  "depends": {"fabricloader": ">=0.19.3", "fabric-api": ">=0.92.2", "cloth-config2": ">=11.1.118", "java": ">=17", "minecraft": "~1.20.1"},
+  "suggests": {"modmenu": "*"}
+}

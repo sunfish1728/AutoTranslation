@@ -3,14 +3,7 @@
   "minVersion": "0.8",
   "package": "me.langyue.autotranslation.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": [
-    "EntityMixin",
-    "MinecraftServerMixin",
-    "PlayerChatMessageMixin",
-    "PlayerMixin",
-    "PlayerTeamMixin",
-    "ServerPlayerMixin"
-  ],
+  "mixins": [],
   "client": [
     "ChatComponentMixin",
     "ClientLanguageMixin",
@@ -19,10 +12,7 @@
     "GameRendererMixin",
     "MutableComponentMixin",
     "ScreenMixin",
-    "TooltipMixin",
-    "compat.patchouli.BookEntryMixin",
-    "compat.patchouli.SpanMixin",
-    "compat.patchouli.WordMixin"
+    "TooltipMixin"
   ],
   "injectors": {
     "defaultRequire": 1

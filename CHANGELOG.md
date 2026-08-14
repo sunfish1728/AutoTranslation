@@ -1,3 +1,21 @@
+# V1.3.0 RC1
+
+2026-08-14
+
+## 新增与变更
+
+1. 新增 Minecraft 1.20.1 Fabric、1.20.1 Forge、1.21.1 NeoForge 与 26.1.2 NeoForge 原生构建。
+2. 移除 production JAR 的 Architectury 运行时依赖和服务端 mixin。
+3. 重构为客户端安全显示副本，不修改签名聊天或原始 Component。
+4. 新增有限翻译队列、批处理、去重、重试上限、格式符保护、原子快取与 JDK ZIP 资源包。
+5. 恢复设置界面、客户端指令、屏幕翻译图标、快捷键和可选 Patchouli 标题相容层。
+
+## 安全修复
+
+1. 移除 trust-all TLS 与 `NoopHostnameVerifier`，恢复默认 CA 与 hostname 验证。
+2. 自定义 IP 只作为原域名的解析结果，Host、SNI 与证书验证始终使用域名。
+3. 修复无限重试、线程与连接池泄漏、后台线程修改 UI，以及持久 `_at_store` 未载入问题。
+
 # V1.2.1
 
 2023-12-30

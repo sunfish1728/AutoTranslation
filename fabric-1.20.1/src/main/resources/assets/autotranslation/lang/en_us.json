@@ -1,0 +1,23 @@
+{
+  "category.autotranslation": "Auto Translation",
+  "key.autotranslation.screen_translate": "Toggle screen translation",
+  "checkbox.autotranslation.tooltip": "Toggle translation for this screen",
+  "text.autoconfig.autotranslation.title": "Auto Translation",
+  "text.autoconfig.autotranslation.option.mode": "Filter mode",
+  "text.autoconfig.autotranslation.option.translator": "Translator API",
+  "text.autoconfig.autotranslation.option.ignoreOriginalScreen": "Exclude original screens",
+  "text.autoconfig.autotranslation.option.appendOriginal": "Append original text",
+  "text.autoconfig.autotranslation.option.wordBlacklist": "Word blacklist",
+  "text.autoconfig.autotranslation.option.debug": "Enable debug logging",
+  "text.autoconfig.autotranslation.option.icon.alwaysDisplay": "Always show translation icon",
+  "text.autoconfig.autotranslation.option.icon.displayArea": "Icon position",
+  "text.autoconfig.autotranslation.option.icon.offsetX": "Horizontal offset",
+  "text.autoconfig.autotranslation.option.icon.offsetY": "Vertical offset",
+  "text.autoconfig.autotranslation.option.google.domain": "Google Translate domain",
+  "commands.autotranslation.command.reloaded": "Translation cache reloaded.",
+  "commands.autotranslation.command.error.reload": "Could not reload translation cache.",
+  "commands.autotranslation.command.unconfirmed.empty": "No pending command to confirm.",
+  "commands.autotranslation.command.pack_resource.unconfirmed": "Run /auto_translation confirm within 30 seconds to create the resource pack.",
+  "commands.autotranslation.command.pack_resource.packed": "Translation resource pack created.",
+  "commands.autotranslation.command.error.pack_resource": "Could not create translation resource pack."
+}

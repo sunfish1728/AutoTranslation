@@ -1,59 +1,93 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
-
-name: Java CI with Gradle
+name: Four production JARs
 
 on:
   push:
-    branches:
-      - 'master'
-      - 'mc**'
-    paths-ignore:
-      - '.github/**'
   pull_request:
-    branches:
-      - 'master'
-      - 'dev'
-      - 'mc**'
-    paths-ignore:
-      - '.github/**'
-      - '**.md'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
-
+  production:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mc1.20.1-fabric
+            java: 17
+            root: fabric-1.20.1
+            tasks: clean remapJar
+            jar: AutoTranslation-1.3.0+mc1.20.1-fabric.jar
+            metadata: fabric.mod.json
+          - name: mc1.20.1-forge
+            java: 17
+            root: forge-1.20.1
+            tasks: clean build
+            jar: AutoTranslation-1.3.0+mc1.20.1-forge.jar
+            metadata: META-INF/mods.toml
+          - name: mc1.21.1-neoforge
+            java: 21
+            root: neoforge-1.21.1
+            tasks: clean build
+            jar: AutoTranslation-1.3.0+mc1.21.1-neoforge.jar
+            metadata: META-INF/neoforge.mods.toml
+          - name: mc26.1.2-neoforge
+            java: 25
+            root: neoforge-26.1.2
+            tasks: clean build
+            jar: AutoTranslation-1.3.0+mc26.1.2-neoforge.jar
+            metadata: META-INF/neoforge.mods.toml
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - uses: actions/checkout@v4
 
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - uses: gradle/actions/setup-gradle@v4
 
-    - name: Execute Gradle build
-      run: ./gradlew build
+      - name: Test pure core
+        if: matrix.name == 'mc1.20.1-fabric'
+        run: ./gradlew -p core test --no-daemon
 
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Forge
-        path: forge/build/libs
+      - name: Build production JAR
+        run: |
+          if [ "${{ matrix.root }}" = "neoforge-26.1.2" ]; then
+            chmod +x neoforge-26.1.2/gradlew
+            neoforge-26.1.2/gradlew -p neoforge-26.1.2 ${{ matrix.tasks }} --no-daemon
+          else
+            chmod +x gradlew
+            ./gradlew -p "${{ matrix.root }}" ${{ matrix.tasks }} --no-daemon
+          fi
 
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Fabric
-        path: fabric/build/libs
+      - name: Verify production contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path="${{ matrix.root }}/build/libs/${{ matrix.jar }}"
+          test -f "$jar_path"
+          entries="$(unzip -Z1 "$jar_path")"
+          grep -Fx '${{ matrix.metadata }}' <<<"$entries"
+          grep -Fx 'LICENSE' <<<"$entries" || grep -Fx 'META-INF/LICENSE' <<<"$entries"
+          grep -Fx 'me/langyue/autotranslation/translate/ITranslator.class' <<<"$entries"
+          grep -Fx 'me/langyue/autotranslation/translate/TranslatorManager.class' <<<"$entries"
+          if grep -Eiq 'architectury|PlatformMethods|MinecraftServerMixin|ServerPlayerMixin|PlayerChatMessageMixin' <<<"$entries"; then
+            echo 'Forbidden runtime or server entry found in production JAR' >&2
+            exit 1
+          fi
+          duplicates="$(sort <<<"$entries" | uniq -d)"
+          test -z "$duplicates"
+          sha256sum "$jar_path" > "${jar_path}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AutoTranslation-${{ matrix.name }}
+          path: |
+            ${{ matrix.root }}/build/libs/${{ matrix.jar }}
+            ${{ matrix.root }}/build/libs/${{ matrix.jar }}.sha256
+          if-no-files-found: error

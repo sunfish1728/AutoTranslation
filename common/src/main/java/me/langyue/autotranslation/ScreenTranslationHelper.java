@@ -3,7 +3,6 @@ package me.langyue.autotranslation;
 import com.mojang.realmsclient.RealmsMainScreen;
 import me.langyue.autotranslation.accessor.ScreenAccessor;
 import me.langyue.autotranslation.util.FileUtils;
-import me.shedaniel.clothconfig2.gui.ClothConfigScreen;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -44,7 +43,7 @@ public class ScreenTranslationHelper {
         add("dev.ftb.mods.ftbquests.client.gui.MultilineTextEditorScreen");
         add("dev.ftb.mods.ftbquests.client.gui.RewardTablesScreen");
         add("dev.ftb.mods.ftbquests.client.gui.quests.QuestScreen");
-        add(ClothConfigScreen.class.getName());
+        add("me.shedaniel.clothconfig2.gui.ClothConfigScreen");
     }};
 
     private static boolean needSave = false;
@@ -70,6 +69,14 @@ public class ScreenTranslationHelper {
 
     public static void saveConfig() {
         write();
+    }
+
+    public static void close() {
+        write();
+        if (timer != null) {
+            timer.shutdownNow();
+            timer = null;
+        }
     }
 
     private static void read() {
@@ -152,13 +159,8 @@ public class ScreenTranslationHelper {
     }
 
     private static String getClassName(Screen screen) {
-        try {
-            // FTB 兼容
-            if (screen instanceof dev.ftb.mods.ftblibrary.ui.ScreenWrapper screenWrapper) {
-                return screenWrapper.getGui().getClass().getName();
-            }
-        } catch (Throwable ignored) {
-        }
+        // Optional integrations must not resolve third-party classes while they
+        // are absent.  FTB wrappers fall back to their own screen class name.
         String className = screen.getClass().getName();
         if (className.startsWith("vazkii.patchouli.client.book.gui.")) {
             return "vazkii.patchouli.client.book.gui.*";

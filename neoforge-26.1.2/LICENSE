@@ -1,0 +1,10 @@
+AutoTranslation - Minecraft automatic translation mod
+Copyright (C) Moirstral and contributors
+
+This NeoForge 26.1.2 build root is distributed under the GNU Affero General
+Public License, version 3.0 or later (AGPL-3.0-or-later).  The complete license
+text is the repository's canonical LICENSE file at ../LICENSE.
+
+This file is kept with the independently buildable 26.1.2 root so that its
+source attribution and license can travel with the build configuration.  A
+complete source distribution MUST include the canonical LICENSE text.

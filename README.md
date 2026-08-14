@@ -13,6 +13,25 @@ to solve these pain points, I developed this Mod.
 
 [CHANGELOG](CHANGELOG_en.md)
 
+## 1.3.0 重构移植版 / Refactored port
+
+本 fork 的 1.3.0 版本以客户端安全、原生加载器适配和可重现构建为目标，提供以下四个独立产物：
+
+| Minecraft | Loader | Java | Required dependencies |
+|---|---|---:|---|
+| 1.20.1 | Fabric | 17 | Fabric API, Cloth Config |
+| 1.20.1 | Forge | 17 | Forge 47+, Cloth Config |
+| 1.21.1 | NeoForge | 21 | NeoForge 21.1.248+, Cloth Config |
+| 26.1.2 | NeoForge | 25 | NeoForge 26.1.2.95+, Cloth Config |
+
+下载 / Downloads: [GitHub Releases](https://github.com/sunfish1728/AutoTranslation/releases)
+
+安装时只需选择与 Minecraft 和加载器相符的一个 JAR，并安装表中必要依赖。Patchouli 与 FTB 均不是必要依赖；Patchouli 相容层只提供安全的标题显示副本，不宣称翻译深层书本正文。
+
+The 1.3.0 fork ships four loader/version-specific JARs. Install exactly one JAR matching the game and loader, together with the required dependencies above. Patchouli and FTB remain optional; deep Patchouli body translation is not claimed.
+
+安全重构包括默认 JVM TLS/hostname 验证、有限队列与重试、不可变显示快照、客户端指令、原子快取写入，以及不修改签名聊天或调用方持有的 Component。
+
 # 功能
 
 ## 自动翻译无当前语言翻译的语言文件

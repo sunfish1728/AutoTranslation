@@ -17,9 +17,6 @@
   "entrypoints": {
     "main": [
       "me.langyue.autotranslation.fabric.AutoTranslationFabric"
-    ],
-    "modmenu": [
-      "me.langyue.autotranslation.fabric.config.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -28,8 +25,6 @@
   ],
   "depends": {
     "fabricloader": "*",
-    "minecraft": ">=1.20.0",
-    "architectury": ">=9-",
-    "cloth-config2": ">=11-"
+    "minecraft": "1.20.1"
   }
 }

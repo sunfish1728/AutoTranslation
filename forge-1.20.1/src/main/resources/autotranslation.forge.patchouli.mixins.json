@@ -1,0 +1,1 @@
+{"required":false,"package":"me.langyue.autotranslation.forge1201.mixin.compat","plugin":"me.langyue.autotranslation.forge1201.mixin.compat.PatchouliMixinPlugin","compatibilityLevel":"JAVA_17","client":["PatchouliBookEntryMixin"],"injectors":{"defaultRequire":0}}

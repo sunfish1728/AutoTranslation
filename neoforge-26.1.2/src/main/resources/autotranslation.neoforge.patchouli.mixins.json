@@ -1,0 +1,1 @@
+{"required":false,"minVersion":"0.8","package":"me.langyue.autotranslation.neoforge.mixin.compat","plugin":"me.langyue.autotranslation.neoforge.mixin.compat.PatchouliMixinPlugin","compatibilityLevel":"JAVA_25","client":["PatchouliBookEntryMixin"],"injectors":{"defaultRequire":0}}

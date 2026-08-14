@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "me.langyue.autotranslation.neoforge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "LanguageDisplayMixin",
+    "GuiGraphicsDisplayMixin",
+    "ScreenIconMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

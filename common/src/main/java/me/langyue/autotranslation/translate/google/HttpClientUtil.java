@@ -20,17 +20,13 @@ import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.impl.conn.SystemDefaultDnsResolver;
 import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.ssl.SSLContexts;
 
-import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
@@ -54,7 +50,9 @@ import java.util.concurrent.TimeUnit;
 public class HttpClientUtil {
 
     private static final int CONNECT_TIMEOUT = 5000;
-    private static final int SOCKET_TIMEOUT = 3000;
+    private static final int SOCKET_TIMEOUT = 5000;
+    private static final int REQUEST_DEADLINE = 15_000;
+    private static final int MAX_RETRIES = 2;
     private static final int MAX_CONN = 100;
     private static final int HTTP_IDLE_TIMEOUT = 10 * 1000;
     private static final Gson GSON = new Gson();
@@ -63,6 +61,7 @@ public class HttpClientUtil {
 
     private final static Object syncLock = new Object(); // 相当于线程锁,用于线程安全
     private static volatile CloseableHttpClient httpClient;
+    private static volatile String clientKey;
 
     /**
      * 对http请求进行基本设置
@@ -78,15 +77,24 @@ public class HttpClientUtil {
     }
 
     public static CloseableHttpClient getHttpClient(URI uri, String dns) {
-        if (uri == null) return null;
+        if (uri == null || !"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalArgumentException("Only HTTPS translation endpoints are supported");
+        }
+        String requestedKey = uri.getHost() + ":" + uri.getPort() + "@" + (dns == null ? "system" : dns);
 
-        if (httpClient == null) {
+        if (httpClient == null || !requestedKey.equals(clientKey)) {
             //多线程下多个线程同时调用getHttpClient容易导致重复创建httpClient对象的问题,所以加上了同步锁
             synchronized (syncLock) {
-                if (httpClient == null) {
+                if (httpClient == null || !requestedKey.equals(clientKey)) {
+                    closeConnectionPool();
                     httpClient = createHttpClient(uri.getHost(), uri.getPort(), dns);
+                    clientKey = requestedKey;
                     //开启监控线程,对异常和空闲线程进行关闭
-                    timer = Executors.newSingleThreadScheduledExecutor();
+                    timer = Executors.newSingleThreadScheduledExecutor(r -> {
+                        Thread thread = new Thread(r, "AutoTranslation-HTTP-cleanup");
+                        thread.setDaemon(true);
+                        return thread;
+                    });
                     timer.scheduleAtFixedRate(() -> {
                         //关闭异常连接
                         manager.closeExpiredConnections();
@@ -108,7 +116,7 @@ public class HttpClientUtil {
     public static CloseableHttpClient createHttpClient(String host, int port, String dns) {
         ConnectionSocketFactory plainSocketFactory = PlainConnectionSocketFactory.getSocketFactory();
         Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create().register("http", plainSocketFactory)
-                .register("https", getSslConnectionSocketFactory()).build();
+                .register("https", SSLConnectionSocketFactory.getSocketFactory()).build();
 
         if (dns == null) {
             manager = new PoolingHttpClientConnectionManager(registry);
@@ -132,9 +140,8 @@ public class HttpClientUtil {
 
         //请求失败时,进行请求重试
         HttpRequestRetryHandler handler = (e, i, httpContext) -> {
-            if (i > 3) {
-                //重试超过3次,放弃请求
-                AutoTranslation.LOGGER.error("retry has more than 3 time, give up request");
+            if (i > MAX_RETRIES) {
+                AutoTranslation.LOGGER.warn("Translation request retry budget exhausted");
                 return false;
             }
             if (e instanceof ConnectTimeoutException) {
@@ -142,10 +149,14 @@ public class HttpClientUtil {
                 AutoTranslation.LOGGER.error("Connection Time out");
                 return false;
             }
-            if (e instanceof NoHttpResponseException) {
-                //服务器没有响应,可能是服务器断开了连接,应该重试
-                AutoTranslation.LOGGER.error("receive no response from server, retry");
-                return true;
+            if (e instanceof NoHttpResponseException && !(HttpClientContext.adapt(httpContext).getRequest() instanceof HttpEntityEnclosingRequest)) {
+                try {
+                    Thread.sleep(250L * i);
+                    return true;
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
             }
             if (e instanceof SSLHandshakeException) {
                 // SSL握手异常
@@ -163,7 +174,7 @@ public class HttpClientUtil {
                 return false;
             }
             if (e instanceof SSLException) {
-                AutoTranslation.LOGGER.error("SSLException", e);
+                AutoTranslation.LOGGER.warn("TLS request rejected: {}", e.getClass().getSimpleName());
                 return false;
             }
 
@@ -177,22 +188,6 @@ public class HttpClientUtil {
                 .build();
     }
 
-    /**
-     * 支持SSL
-     *
-     * @return SSLConnectionSocketFactory
-     */
-    private static SSLConnectionSocketFactory getSslConnectionSocketFactory() {
-        try {
-            TrustStrategy acceptingTrustStrategy = (x509Certificates, s) -> true;
-            SSLContext sslContext = SSLContexts.custom().loadTrustMaterial(null, acceptingTrustStrategy).build();
-            return new SSLConnectionSocketFactory(sslContext, new NoopHostnameVerifier());
-        } catch (Throwable e) {
-            AutoTranslation.LOGGER.warn("Create SSLConnectionSocketFactory failed", e);
-        }
-        return SSLConnectionSocketFactory.getSocketFactory();
-    }
-
     private static <T> T execute(HttpRequestBase request, String dns, Class<T> classOfT) {
         long time = System.currentTimeMillis();
         setRequestConfig(request);
@@ -202,19 +197,22 @@ public class HttpClientUtil {
         String result = null;
         try {
             response = getHttpClient(request.getURI(), dns).execute(request, HttpClientContext.create());
+            if (System.currentTimeMillis() - time > REQUEST_DEADLINE) {
+                throw new InterruptedIOException("Translation request exceeded deadline");
+            }
             HttpEntity entity = response.getEntity();
             if (entity != null) {
                 in = entity.getContent();
                 result = IOUtils.toString(in, StandardCharsets.UTF_8);
-                AutoTranslation.debug("{} {}ms: \n{}", request, System.currentTimeMillis() - time, result);
+                AutoTranslation.debug("Translation request to {} completed in {}ms", request.getURI().getHost(), System.currentTimeMillis() - time);
                 if (classOfT == String.class) {
-                    object = classOfT.cast(request);
+                    object = classOfT.cast(result);
                 } else {
                     object = GSON.fromJson(result, classOfT);
                 }
             }
         } catch (Throwable e) {
-            AutoTranslation.LOGGER.error("{}: {}", request, result, e);
+            AutoTranslation.LOGGER.warn("Translation request to {} failed: {}", request.getURI().getHost(), e.getClass().getSimpleName());
         } finally {
             try {
                 if (in != null) in.close();
@@ -239,6 +237,7 @@ public class HttpClientUtil {
     }
 
     public static <T> T get(String url, String dns, Map<String, String> params, Class<T> classOfT) {
+        requireHttps(url);
         HttpGet httpGet = new HttpGet(url);
         setRequestConfig(httpGet);
         if (params != null && !params.isEmpty()) {
@@ -252,6 +251,7 @@ public class HttpClientUtil {
     }
 
     public static <T> T post(String url, Map<String, String> params, Class<T> classOfT) {
+        requireHttps(url);
         HttpPost httpPost = new HttpPost(url);
         List<NameValuePair> nvps = new ArrayList<>();
         if (params != null && !params.isEmpty()) {
@@ -265,6 +265,7 @@ public class HttpClientUtil {
     }
 
     public static int status(String url, String dns) {
+        requireHttps(url);
         HttpGet httpGet = new HttpGet(url);
         setRequestConfig(httpGet);
         CloseableHttpResponse response = null;
@@ -273,7 +274,7 @@ public class HttpClientUtil {
             response = getHttpClient(httpGet.getURI(), dns).execute(httpGet, HttpClientContext.create());
             status = response.getStatusLine().getStatusCode();
         } catch (Throwable e) {
-            AutoTranslation.LOGGER.error(e.getMessage());
+            AutoTranslation.LOGGER.debug("Translation availability check failed: {}", e.getClass().getSimpleName());
             status = 999;
         } finally {
             try {
@@ -290,12 +291,19 @@ public class HttpClientUtil {
      */
     public static void closeConnectionPool() {
         try {
-            if (httpClient != null)
+            if (timer != null) {
+                timer.shutdownNow();
+                timer = null;
+            }
+            if (httpClient != null) {
                 httpClient.close();
-            if (manager != null)
+                httpClient = null;
+            }
+            if (manager != null) {
                 manager.close();
-            if (timer != null)
-                timer.shutdown();
+                manager = null;
+            }
+            clientKey = null;
         } catch (IOException e) {
             AutoTranslation.LOGGER.error("", e);
         }
@@ -305,13 +313,13 @@ public class HttpClientUtil {
      * 关闭连接池
      */
     public static void reset() {
-        try {
-            if (httpClient != null) {
-                httpClient.close();
-                httpClient = null;
-            }
-        } catch (IOException e) {
-            AutoTranslation.LOGGER.error("", e);
+        closeConnectionPool();
+    }
+
+    private static void requireHttps(String url) {
+        URI uri = URI.create(url);
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null) {
+            throw new IllegalArgumentException("Only absolute HTTPS translation endpoints are supported");
         }
     }
 }

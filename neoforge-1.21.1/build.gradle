@@ -1,0 +1,61 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+
+group = 'me.langyue'
+version = "${mod_version}+mc1.21.1-neoforge"
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.shedaniel.me/' }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+sourceSets {
+    main {
+        java.srcDir('../core/src/main/java')
+        java.srcDir('../client-1201-shared/src/main/java')
+        java.exclude('me/langyue/autotranslation/client1201/ClientIconButton.java')
+    }
+}
+
+dependencies {
+    implementation 'me.shedaniel.cloth:cloth-config-neoforge:15.0.140'
+}
+
+processResources {
+    def resolvedModVersion = project.property('mod_version')
+    inputs.property 'mod_version', resolvedModVersion
+    filesMatching('META-INF/neoforge.mods.toml') { expand mod_version: resolvedModVersion }
+    from('../common/src/main/resources/assets/autotranslation/textures/gui/icon.png') { into 'assets/autotranslation/textures/gui' }
+}
+
+neoForge {
+    version = neoforge_version
+    validateAccessTransformers = true
+    runs {
+        client { client() }
+    }
+    mods {
+        autotranslation { sourceSet sourceSets.main }
+    }
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName = 'AutoTranslation'
+    manifest.attributes([
+            'Specification-Title': 'AutoTranslation',
+            'Specification-Vendor': '墨涤千尘',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version
+    ])
+    from('../LICENSE')
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

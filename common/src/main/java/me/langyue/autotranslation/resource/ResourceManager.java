@@ -7,7 +7,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import dev.architectury.platform.Platform;
 import me.langyue.autotranslation.AutoTranslation;
 import me.langyue.autotranslation.TranslatorHelper;
 import me.langyue.autotranslation.command.ResourcePathArgument;
@@ -67,6 +66,13 @@ public class ResourceManager {
         if (timer == null) {
             timer = Executors.newSingleThreadScheduledExecutor();
             timer.scheduleAtFixedRate(ResourceManager::save, 5, 5, TimeUnit.MINUTES);
+        }
+    }
+
+    public static void close() {
+        if (timer != null) {
+            timer.shutdownNow();
+            timer = null;
         }
     }
 
@@ -306,15 +312,8 @@ public class ResourceManager {
                 }
             }
             addArchiveEntry(zipCreator, packMcmeta, new FileInputStream(AutoTranslation.ROOT.resolve(packMcmeta).toFile()));
-            try {
-                Platform.getMod(AutoTranslation.MOD_ID).findResource("icon.png").ifPresent(icon -> {
-                    try {
-                        addArchiveEntry(zipCreator, "pack.png", Files.newInputStream(icon));
-                    } catch (Throwable ignored) {
-                    }
-                });
-            } catch (Throwable ignored) {
-            }
+            // A pack icon is intentionally optional.  Looking it up through an
+            // Architectury runtime bridge used to make the core loader-specific.
             zipCreator.writeTo(zipArchiveOutputStream);
         } catch (Throwable e) {
             throw new RuntimeException(e);

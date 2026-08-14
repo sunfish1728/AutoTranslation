@@ -31,6 +31,10 @@ public class Google implements ITranslator {
         return instance;
     }
 
+    public static void close() {
+        timer.shutdownNow();
+    }
+
     @Override
     public void init() {
         timer.scheduleAtFixedRate(() -> {

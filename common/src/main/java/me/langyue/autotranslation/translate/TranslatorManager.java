@@ -26,11 +26,16 @@ public class TranslatorManager {
     }
 
     public static void setTranslator(String name) {
+        Supplier<ITranslator> factory = _TRANSLATOR_MAP.get(name);
+        if (factory == null) {
+            AutoTranslation.LOGGER.warn("Unknown translator '{}', falling back to {}", name, DEFAULT_TRANSLATOR);
+            name = DEFAULT_TRANSLATOR;
+            factory = _TRANSLATOR_MAP.get(name);
+        }
         if (!_TRANSLATOR_INSTANCES.containsKey(name)) {
-            ITranslator translator = _TRANSLATOR_MAP.get(name).get();
+            ITranslator translator = factory.get();
             if (translator == null) {
-                AutoTranslation.LOGGER.error("Unknown translator: {}", name);
-                setTranslator(DEFAULT_TRANSLATOR);
+                AutoTranslation.LOGGER.error("Translator factory returned no instance: {}", name);
             } else {
                 translator.init();
                 _TRANSLATOR_INSTANCES.put(name, translator);
@@ -43,7 +48,8 @@ public class TranslatorManager {
     }
 
     public static ITranslator getTranslator() {
-        return getTranslator(AutoTranslation.CONFIG.translator);
+        ITranslator translator = getTranslator(AutoTranslation.CONFIG.translator);
+        return translator == null ? getTranslator(DEFAULT_TRANSLATOR) : translator;
     }
 
     public static ITranslator getTranslator(String name) {

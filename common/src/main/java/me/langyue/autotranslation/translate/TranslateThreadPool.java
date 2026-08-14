@@ -23,7 +23,8 @@ public class TranslateThreadPool {
         timer = Executors.newSingleThreadScheduledExecutor();
 
         timer.scheduleAtFixedRate(() -> {
-            if (!TranslatorManager.getTranslator().ready()) return;
+            ITranslator translator = TranslatorManager.getTranslator();
+            if (translator == null || !translator.ready()) return;
             if (QUEUE.isEmpty()) return;
             KeyValue keyValue = QUEUE.poll();
             if (keyValue == null) return;
@@ -52,9 +53,18 @@ public class TranslateThreadPool {
      * @param callback 回调方法
      */
     public static void offer(String key, String value, Consumer<String> callback) {
-        if (keys.containsKey(key)) return;
-        keys.put(key, callback == null ? s -> {
-        } : callback);
-        QUEUE.offer(new KeyValue(key, value));
+        Consumer<String> previous = keys.putIfAbsent(key, callback == null ? s -> { } : callback);
+        if (previous == null) {
+            QUEUE.offer(new KeyValue(key, value));
+        }
+    }
+
+    public static void close() {
+        if (timer != null) {
+            timer.shutdownNow();
+            timer = null;
+        }
+        QUEUE.clear();
+        keys.clear();
     }
 }

@@ -1,0 +1,88 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+
+group = 'me.langyue'
+version = "${mod_version}+mc26.1.2-neoforge"
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.shedaniel.me/' }
+    if (project.hasProperty('compatSmoke')) {
+        maven { url = 'https://maven.blamejared.com/' }
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+sourceSets {
+    main {
+        java.srcDir('../core/src/main/java')
+        java.srcDir('../client-1201-shared/src/main/java')
+        java.exclude('me/langyue/autotranslation/client1201/ClientIconButton.java')
+    }
+}
+
+dependencies {
+    // NeoForge-specific artifact; it has no classifier and is not bundled.
+    implementation 'me.shedaniel.cloth:cloth-config-neoforge:26.1.154'
+    if (project.hasProperty('compatSmoke')) {
+        // Test-only optional compatibility harness. Never bundled or declared in metadata.
+        implementation 'vazkii.patchouli:patchouli-neoforge:26.1-94'
+    }
+}
+
+neoForge {
+    version = neoforge_version
+    validateAccessTransformers = true
+
+    runs {
+        client {
+            client()
+        }
+    }
+
+    mods {
+        autotranslation {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources) {
+    def resourceProperties = [
+        mod_id: mod_id,
+        mod_version: mod_version,
+        minecraft_version_range: minecraft_version_range
+    ]
+    inputs.properties(resourceProperties)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(resourceProperties)
+    }
+    from('../common/src/main/resources/assets/autotranslation/textures/gui/icon.png') {
+        into 'assets/autotranslation/textures/gui'
+    }
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName = 'AutoTranslation'
+    from('LICENSE') {
+        into 'META-INF'
+    }
+    from('SOURCE-ATTRIBUTION.md') {
+        into 'META-INF'
+    }
+    manifest.attributes([
+        'Specification-Title': 'AutoTranslation',
+        'Specification-Vendor': 'Moirstral',
+        'Implementation-Title': project.name,
+        'Implementation-Version': project.version
+    ])
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
